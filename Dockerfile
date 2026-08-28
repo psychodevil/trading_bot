@@ -20,5 +20,5 @@ COPY . .
 # Expose port for reports and live dashboard
 EXPOSE 8088
 
-# Default command runs the fast walk-forward simulation
-CMD ["python", "run_walkforward_portfolio.py"]
+# Default command runs the QuantumAlpha web application & REST API server
+CMD ["python", "web/app.py"]

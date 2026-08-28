@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Executive Portfolio Dashboard</h1>
+        <p class="page-subtitle">Strictly Causal Walk-Forward Multi-Asset Trading Engine ($100,000 Starting Capital)</p>
+    </div>
+    <div class="header-actions">
+        <span class="status-indicator live"></span>
+        <span class="status-text">Causal Walk-Forward Engine: Active</span>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-grid">
+    <div class="kpi-card highlight">
+        <div class="kpi-label">Portfolio Total Equity</div>
+        <div class="kpi-value positive" id="kpi-equity">$101,756.70</div>
+        <div class="kpi-detail">Starting Capital: <strong>$100,000.00</strong></div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Net Strategy Return</div>
+        <div class="kpi-value positive" id="kpi-return">+1.76%</div>
+        <div class="kpi-detail">Dollar Net Profit: <span class="positive">+$1,756.70</span></div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Market Benchmark (Equal-Weight)</div>
+        <div class="kpi-value negative" id="kpi-benchmark">-29.30%</div>
+        <div class="kpi-detail">Whole-Market Buy & Hold</div>
+    </div>
+    <div class="kpi-card highlight-gold">
+        <div class="kpi-label">Excess Alpha Generated</div>
+        <div class="kpi-value gold" id="kpi-alpha">+31.06%</div>
+        <div class="kpi-detail">Outperformance Over Market</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Inaction Band Efficiency</div>
+        <div class="kpi-value" id="kpi-inaction">99.2%</div>
+        <div class="kpi-detail">Fees Saved: <strong>$23,000+</strong></div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Total Executed Fills</div>
+        <div class="kpi-value" id="kpi-trades">1,255</div>
+        <div class="kpi-detail">Commissions Paid: <strong>$9,292.64</strong></div>
+    </div>
+</div>
+
+<!-- Main Interactive Chart Container -->
+<div class="card chart-card">
+    <div class="card-header">
+        <div>
+            <h2 class="card-title">Portfolio Equity Trajectory vs Whole-Market Buy & Hold ($)</h2>
+            <p class="card-subtitle">Real-time TradingView Lightweight-Charts synchronization across 10,481 hourly ticks</p>
+        </div>
+        <div class="chart-controls">
+            <div class="legend-badge"><span class="dot green"></span> Strategy Portfolio ($)</div>
+            <div class="legend-badge"><span class="dot gray"></span> Buy & Hold Benchmark ($)</div>
+            <div class="legend-badge"><span class="dot blue"></span> Cash Reserve ($)</div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="mainEquityChart" style="height: 440px;"></div>
+    </div>
+</div>
+
+<!-- Two-Column Layout for Asset Holdings & Fast Simulation -->
+<div class="grid-2">
+    <!-- Active Holdings -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Current Active Portfolio Holdings</h2>
+            <a href="/portfolio" class="card-link">View Full Allocation &rarr;</a>
+        </div>
+        <div class="card-body no-padding">
+            <table class="table" id="dashboardPositionsTable">
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th>Holding Qty</th>
+                        <th>Current Price</th>
+                        <th>Position Value</th>
+                        <th>Weight</th>
+                    </tr>
+                </thead>
+                <tbody id="positionsTableBody">
+                    <tr><td colspan="5" class="text-center">Loading holdings data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Quick Features & Methodology -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Algorithmic Core Principles</h2>
+            <span class="badge blue">Production Architecture</span>
+        </div>
+        <div class="card-body">
+            <div class="feature-list">
+                <div class="feature-item">
+                    <div class="feature-icon">🎯</div>
+                    <div class="feature-text">
+                        <strong>100% Strictly Causal Walk-Forward</strong>
+                        <p>Evaluated sequentially on expanding historical windows with zero lookahead bias.</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🛡️</div>
+                    <div class="feature-text">
+                        <strong>100% Cash Defense in Bear Regimes</strong>
+                        <p>Transitions to cash during macro downtrends, completely dodging crypto collapses.</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-text">
+                        <strong>Analytical Inaction Bands [w_low, w_high]</strong>
+                        <p>Suppresses 99.2% of micro-churn trades, eliminating fee drag and slippage.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        initDashboardCharts();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Portfolio & Asset Allocation Timeline</h1>
+        <p class="page-subtitle">Real-time weights distribution across Equities, Semiconductors, Tech, Commodities, and Crypto</p>
+    </div>
+</div>
+
+<!-- Allocation Timeline Chart -->
+<div class="card chart-card">
+    <div class="card-header">
+        <div>
+            <h2 class="card-title">Dynamic Asset Allocation Weights Over Time (%)</h2>
+            <p class="card-subtitle">Real-time portfolio rebalancing shifts</p>
+        </div>
+        <div id="allocationLegend" class="chart-controls"></div>
+    </div>
+    <div class="card-body">
+        <div id="portfolioAllocationChart" style="height: 380px;"></div>
+    </div>
+</div>
+
+<!-- Complete Portfolio Holdings & Capital Table -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Current Asset Class Breakdown</h2>
+        <input type="text" id="portfolioSearchInput" class="search-box" placeholder="Filter holdings...">
+    </div>
+    <div class="card-body no-padding">
+        <table class="table" id="fullPositionsTable">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Asset Class</th>
+                    <th>Holding Quantity</th>
+                    <th>Current Market Price</th>
+                    <th>Total Position Value</th>
+                    <th>Portfolio Weight</th>
+                </tr>
+            </thead>
+            <tbody id="fullPositionsTableBody">
+                <tr><td colspan="6" class="text-center">Loading portfolio data...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        initPortfolioView();
+    });
+</script>
+{% endblock %}

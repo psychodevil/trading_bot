@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Market Universe Explorer (62 Assets)</h1>
+        <p class="page-subtitle">Interactive Candlestick Charts, Sector Breakdowns, and Live Asset Catalogs</p>
+    </div>
+    <div class="header-actions">
+        <select id="marketSectorFilter" class="select-box" onchange="filterMarketTable()">
+            <option value="ALL">All Sectors (62)</option>
+            <option value="Broad Market">Broad Market & ETFs</option>
+            <option value="Technology">Technology</option>
+            <option value="Semiconductors">Semiconductors</option>
+            <option value="Healthcare">Healthcare</option>
+            <option value="Energy">Energy</option>
+            <option value="Financials">Financials</option>
+            <option value="Consumer">Consumer</option>
+            <option value="Commodities">Commodities</option>
+            <option value="Crypto L1">Crypto Layer 1s</option>
+            <option value="Forex Majors">Forex Majors</option>
+        </select>
+    </div>
+</div>
+
+<!-- Interactive Asset Candlestick Chart Modal / View -->
+<div class="card chart-card" id="candlestickCard">
+    <div class="card-header">
+        <div>
+            <h2 class="card-title" id="selectedAssetTitle">SPY - S&P 500 ETF (1-Hour Candlesticks)</h2>
+            <p class="card-subtitle" id="selectedAssetSubtitle">Live OHLCV candlestick price stream</p>
+        </div>
+        <div class="chart-controls">
+            <span class="badge blue" id="selectedAssetClass">STOCK</span>
+            <span class="badge green" id="selectedAssetReturn">+18.64%</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="marketCandlestickChart" style="height: 420px;"></div>
+    </div>
+</div>
+
+<!-- 62 Assets Table -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Global Multi-Asset Catalog</h2>
+        <input type="text" id="marketSearchInput" class="search-box" placeholder="Search symbol or name..." onkeyup="filterMarketTable()">
+    </div>
+    <div class="card-body no-padding">
+        <table class="table" id="marketAssetsTable">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Asset Name</th>
+                    <th>Sector</th>
+                    <th>Asset Class</th>
+                    <th>Historical Bars</th>
+                    <th>Latest Price</th>
+                    <th>1-Year Return</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="marketAssetsTableBody">
+                <tr><td colspan="8" class="text-center">Loading 62 market assets...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        initMarketsView();
+    });
+</script>
+{% endblock %}

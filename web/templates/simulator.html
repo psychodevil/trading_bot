@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Interactive Quantitative Simulation Lab</h1>
+        <p class="page-subtitle">Configure parameters, select universes, and run on-demand walk-forward backtests in real-time</p>
+    </div>
+</div>
+
+<div class="grid-2">
+    <!-- Simulation Parameters Card -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Backtest Configuration</h2>
+            <span class="badge blue">Live Execution</span>
+        </div>
+        <div class="card-body">
+            <form id="simulationForm" onsubmit="event.preventDefault(); runCustomSimulation();">
+                <div class="form-group">
+                    <label class="form-label">Initial Portfolio Capital ($)</label>
+                    <input type="number" id="simInitialCash" class="form-input" value="100000" min="1000" step="1000">
+                    <span class="form-hint">Starting cash pool to allocate across assets.</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Maximum Total Leverage Multiplier</label>
+                    <input type="number" id="simMaxLeverage" class="form-input" value="1.25" min="0.5" max="3.0" step="0.05">
+                    <span class="form-hint">1.0 = 100% unleveraged; 1.25 = 125% max exposure during verified bull regimes.</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Target Multi-Asset Universe</label>
+                    <div class="checkbox-grid">
+                        <label class="checkbox-label"><input type="checkbox" name="simAsset" value="SPY" checked> SPY (S&P 500)</label>
+                        <label class="checkbox-label"><input type="checkbox" name="simAsset" value="QQQ" checked> QQQ (Nasdaq 100)</label>
+                        <label class="checkbox-label"><input type="checkbox" name="simAsset" value="AAPL" checked> AAPL (Apple)</label>
+                        <label class="checkbox-label"><input type="checkbox" name="simAsset" value="MSFT" checked> MSFT (Microsoft)</label>
+                        <label class="checkbox-label"><input type="checkbox" name="simAsset" value="NVDA" checked> NVDA (NVIDIA)</label>
+                        <label class="checkbox-label"><input type="checkbox" name="simAsset" value="AMD" checked> AMD (Semiconductors)</label>
+                        <label class="checkbox-label"><input type="checkbox" name="simAsset" value="LLY" checked> LLY (Eli Lilly)</label>
+                        <label class="checkbox-label"><input type="checkbox" name="simAsset" value="XOM" checked> XOM (Exxon Mobil)</label>
+                        <label class="checkbox-label"><input type="checkbox" name="simAsset" value="GLD" checked> GLD (Gold)</label>
+                        <label class="checkbox-label"><input type="checkbox" name="simAsset" value="SLV" checked> SLV (Silver)</label>
+                        <label class="checkbox-label"><input type="checkbox" name="simAsset" value="BTC-USD" checked> BTC-USD (Bitcoin)</label>
+                        <label class="checkbox-label"><input type="checkbox" name="simAsset" value="ETH-USD" checked> ETH-USD (Ethereum)</label>
+                        <label class="checkbox-label"><input type="checkbox" name="simAsset" value="SOL-USD" checked> SOL-USD (Solana)</label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" id="runSimBtn">🚀 Run Quantitative Simulation</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Simulation Live Results Summary -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Live Simulation Metrics</h2>
+            <span id="simStatusBadge" class="badge green">Ready</span>
+        </div>
+        <div class="card-body">
+            <div class="kpi-grid-mini">
+                <div class="kpi-card-mini">
+                    <div class="kpi-title">Final Portfolio Value</div>
+                    <div class="kpi-val positive" id="simResEquity">$101,756.70</div>
+                </div>
+                <div class="kpi-card-mini">
+                    <div class="kpi-title">Total Strategy Return</div>
+                    <div class="kpi-val positive" id="simResReturn">+1.76%</div>
+                </div>
+                <div class="kpi-card-mini">
+                    <div class="kpi-title">Benchmark Return</div>
+                    <div class="kpi-val negative" id="simResBench">-29.30%</div>
+                </div>
+                <div class="kpi-card-mini">
+                    <div class="kpi-title">Excess Alpha</div>
+                    <div class="kpi-val gold" id="simResAlpha">+31.06%</div>
+                </div>
+            </div>
+
+            <div class="sim-details" style="margin-top: 15px;">
+                <p><strong>Total Executed Trades:</strong> <span id="simResTrades">1,255</span></p>
+                <p><strong>Total Transaction Fees:</strong> <span id="simResFees">$9,292.64</span></p>
+                <p><strong>Final Cash Reserve:</strong> <span id="simResCash">$87,056.21</span></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Simulation Result Chart -->
+<div class="card chart-card" id="simChartContainer" style="margin-top: 20px;">
+    <div class="card-header">
+        <h2 class="card-title">Custom Simulation Equity Trajectory ($)</h2>
+        <div class="chart-controls">
+            <div class="legend-badge"><span class="dot green"></span> Simulated Strategy ($)</div>
+            <div class="legend-badge"><span class="dot gray"></span> Benchmark Buy & Hold ($)</div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="simEquityChart" style="height: 380px;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        initSimulatorView();
+    });
+</script>
+{% endblock %}

@@ -8,4 +8,4 @@ services:
       - "8088:8088"
     environment:
       - PYTHONUNBUFFERED=1
-    command: python3 -m http.server 8088 --directory reports
+    command: python web/app.py

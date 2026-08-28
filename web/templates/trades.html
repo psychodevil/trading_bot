@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Chronological Rebalancing Decision Ledger</h1>
+        <p class="page-subtitle">Every executed transaction with exact fill price, order notional, execution fees, and target weight changes</p>
+    </div>
+    <div class="header-actions">
+        <input type="text" id="tradeSearchInput" class="search-box" placeholder="Filter by symbol, action, or date..." onkeyup="filterTradeTable()">
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Order Fill History (<span id="tradeCountSpan">0</span> Executed Orders)</h2>
+        <span class="badge blue">Audit Trail</span>
+    </div>
+    <div class="card-body no-padding">
+        <table class="table" id="tradeLedgerTable">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Asset Symbol</th>
+                    <th>Action</th>
+                    <th>Executed Quantity</th>
+                    <th>Fill Price</th>
+                    <th>Order Notional</th>
+                    <th>Fee Paid</th>
+                    <th>New Target Weight</th>
+                </tr>
+            </thead>
+            <tbody id="tradeLedgerTableBody">
+                <tr><td colspan="8" class="text-center">Loading trade ledger...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        initTradesView();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title if title else "QuantumAlpha | Probabilistic Trading Platform" }}</title>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="/">
+                    <span class="logo-icon">🌌</span>
+                    <span class="brand-text">Quantum<strong>Alpha</strong></span>
+                </a>
+                <span class="nav-badge">v2.0 PROBABILISTIC</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="/" class="nav-link {{ 'active' if active_page == 'dashboard' else '' }}">Dashboard</a>
+                <a href="/portfolio" class="nav-link {{ 'active' if active_page == 'portfolio' else '' }}">Portfolio & Allocation</a>
+                <a href="/markets" class="nav-link {{ 'active' if active_page == 'markets' else '' }}">Markets (62 Assets)</a>
+                <a href="/simulator" class="nav-link {{ 'active' if active_page == 'simulator' else '' }}">Simulation Lab</a>
+                <a href="/trades" class="nav-link {{ 'active' if active_page == 'trades' else '' }}">Trade Ledger</a>
+            </nav>
+            <div class="nav-actions">
+                <button class="btn btn-outline" onclick="triggerFastBacktest()">⚡ Quick Run ($100k)</button>
+                <a href="https://github.com/psychodevil/trading_bot" target="_blank" class="btn btn-primary">GitHub Repo</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div>
+                QuantumAlpha Quantitative Trading Framework • Built for High-Sharpe Multi-Asset Alpha Generation
+            </div>
+            <div>
+                Causal Bayesian Density Estimation • Non-Linear Cost Optimization • Inaction Bands
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/js/charts.js"></script>
+    <script src="/static/js/app.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

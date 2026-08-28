@@ -1,0 +1,11 @@
+services:
+  trading-bot:
+    build: .
+    container_name: quantitative_trading_bot
+    volumes:
+      - .:/app
+    ports:
+      - "8088:8088"
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python3 -m http.server 8088 --directory reports

@@ -54,3 +54,4 @@ Traditional backtesting engines recompute historical indicators on every bar, le
 - **Circular Variance Ring Buffer**: Updates mean and variance in $O(1)$ memory operations.
 
 This architecture enables evaluating 210,000+ bars across 62 assets in **under 75 seconds**.
+

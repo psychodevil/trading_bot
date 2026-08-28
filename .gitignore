@@ -50,3 +50,4 @@ htmlcov/
 *.tmp
 data/historical/*.csv
 !data/historical/.gitkeep
+

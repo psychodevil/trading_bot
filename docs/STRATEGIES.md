@@ -43,3 +43,4 @@ QuantumAlpha provides concrete, production-ready multi-asset strategies designed
 * **Core Logic**:
   - Trades Bollinger Band statistical extremes ($z > 2.0$ or $z < -2.0$).
   - Captures carry interest rate differentials across central bank rate disparities.
+

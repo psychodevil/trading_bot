@@ -94,6 +94,10 @@ def create_flask_app():
     return app
 
 
+# Module-level WSGI application instance (for Gunicorn / uWSGI / Flask CLI)
+app = create_flask_app()
+
+
 # =============================================================================
 # 2. STANDALONE ZERO-DEPENDENCY WSGI / HTTP SERVER (Pure Python Standard Library)
 # =============================================================================

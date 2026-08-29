@@ -320,3 +320,4 @@ async function triggerFastBacktest() {
     await runCustomSimulation();
     window.location.href = '/';
 }
+

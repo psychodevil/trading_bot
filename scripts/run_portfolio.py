@@ -1,47 +1,36 @@
 #!/usr/bin/env python3
 """
-High-Performance Causal Walk-Forward Multi-Asset Portfolio Simulation ($100k Starting Capital).
-Uses O(1) OnlineFeatureTracker: Backtests 10,000+ ticks across all markets in under 0.5 seconds!
+QuantumAlpha: Causal Walk-Forward Multi-Asset Portfolio Simulator.
+Executes high-speed walk-forward rebalancing simulation starting with $100k capital.
 """
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import os
 import sys
 import time
-import math
-from typing import List, Dict, Tuple, Any, Optional
+from datetime import datetime, timezone
+from typing import List, Dict, Tuple, Any
 
-# Ensure trading_bot is in sys.path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Ensure project root is in sys.path
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from trading_bot.core.instruments import Stock, CryptoSpot, CommodityAsset, Instrument, AssetClass
-from trading_bot.core.events import Bar, MarketQuote, Order, OrderSide, OrderType, PortfolioState, Position, Fill
+from trading_bot.core.events import Bar, MarketQuote
 from trading_bot.data.historical_loader import HistoricalDataLoader
 from trading_bot.forecast.features import OnlineFeatureTracker
-from trading_bot.optimizer.cost_model import TransactionCostModel
 from trading_bot.execution.simulated_broker import SimulatedBroker
 from trading_bot.visualization.portfolio_dashboard import PortfolioDashboardGenerator
 
 
-@dataclass
-class AssetSpec:
-    symbol: str
-    name: str
-    sector: str
-    asset_class: AssetClass
-    fee_rate: float = 0.0005
-    lot_size: float = 1.0
-
-
-def run_walkforward_simulation(
-    universe: List[AssetSpec],
+def run_portfolio_simulation(
+    symbols: List[str],
     initial_cash: float = 100000.0,
     max_portfolio_leverage: float = 1.25,
     max_single_weight: float = 0.20
 ):
     print("=" * 110)
-    print(f"HIGH-PERFORMANCE CAUSAL WALK-FORWARD PORTFOLIO SIMULATION (${initial_cash:,.2f} STARTING CAPITAL)")
+    print(f"QUANTUMALPHA: STRICTLY CAUSAL WALK-FORWARD PORTFOLIO SIMULATION (${initial_cash:,.2f} STARTING CAPITAL)")
     print("=" * 110)
 
     start_timer = time.time()
@@ -49,24 +38,24 @@ def run_walkforward_simulation(
     instruments: Dict[str, Instrument] = {}
     broker = SimulatedBroker(initial_cash=initial_cash)
 
-    for spec in universe:
-        safe_sym = spec.symbol.replace('^', '').replace('=', '_')
-        csv_path = f"data/historical/{safe_sym}_1h_1y.csv"
+    for sym in symbols:
+        safe_sym = sym.replace('^', '').replace('=', '_')
+        csv_path = os.path.join(PROJECT_ROOT, f"data/historical/{safe_sym}_1h_1y.csv")
         if os.path.exists(csv_path):
-            bars = HistoricalDataLoader.load_from_csv(csv_path, symbol=spec.symbol)
+            bars = HistoricalDataLoader.load_from_csv(csv_path, symbol=sym)
             if len(bars) >= 80:
-                asset_bars[spec.symbol] = bars
-                if spec.asset_class == AssetClass.STOCK:
-                    inst = Stock(symbol=spec.symbol, lot_size=spec.lot_size, taker_fee_rate=spec.fee_rate)
-                elif spec.asset_class == AssetClass.CRYPTO_SPOT:
-                    inst = CryptoSpot(symbol=spec.symbol, lot_size=0.001, taker_fee_rate=spec.fee_rate)
+                asset_bars[sym] = bars
+                if "USD" in sym:
+                    inst = CryptoSpot(symbol=sym, lot_size=0.001, taker_fee_rate=0.0006)
+                elif sym in ("GLD", "SLV", "USO"):
+                    inst = CommodityAsset(symbol=sym, lot_size=1.0, taker_fee_rate=0.0003)
                 else:
-                    inst = CommodityAsset(symbol=spec.symbol, lot_size=spec.lot_size, taker_fee_rate=spec.fee_rate)
-                instruments[spec.symbol] = inst
+                    inst = Stock(symbol=sym, lot_size=1.0, taker_fee_rate=0.0005)
+                instruments[sym] = inst
                 broker.register_instrument(inst)
 
-    symbols = list(asset_bars.keys())
-    print(f"[*] Universe Loaded ({len(symbols)} Assets): {', '.join(symbols)}")
+    active_symbols = list(asset_bars.keys())
+    print(f"[*] Loaded Universe ({len(active_symbols)} Assets): {', '.join(active_symbols)}")
 
     # Collate all chronologically ordered market bar events
     all_events: List[Tuple[float, str, Bar]] = []
@@ -84,17 +73,16 @@ def run_walkforward_simulation(
             events_by_ts[ts] = []
         events_by_ts[ts].append((sym, bar))
 
-    # O(1) Online Feature Trackers (Strictly causal, zero lookahead)
     feature_trackers: Dict[str, OnlineFeatureTracker] = {
         sym: OnlineFeatureTracker(ema_periods=(20, 50, 100), rsi_period=14, atr_period=14, vol_window=40)
-        for sym in symbols
+        for sym in active_symbols
     }
     latest_quotes: Dict[str, MarketQuote] = {}
-    last_rebalance_price: Dict[str, float] = {sym: 0.0 for sym in symbols}
+    last_rebalance_price: Dict[str, float] = {sym: 0.0 for sym in active_symbols}
 
     equity_curve_records: List[Dict[str, Any]] = []
     trade_ledger: List[Dict[str, Any]] = []
-    initial_prices = {sym: asset_bars[sym][0].close for sym in symbols}
+    initial_prices = {sym: asset_bars[sym][0].close for sym in active_symbols}
 
     sim_start_time = time.time()
 
@@ -103,7 +91,6 @@ def run_walkforward_simulation(
         updated_symbols = set()
 
         for sym, bar in tick_events:
-            # O(1) step update for technical features
             feature_trackers[sym].update(bar)
             quote = MarketQuote(
                 timestamp=ts,
@@ -122,19 +109,17 @@ def run_walkforward_simulation(
         if current_eq <= 0:
             break
 
-        # Equal-weighted buy-and-hold benchmark
-        active_px_sum = sum(latest_quotes[s].mid_price / initial_prices[s] for s in symbols if s in latest_quotes)
-        active_count = sum(1 for s in symbols if s in latest_quotes)
-        bnh_val = initial_cash * (active_px_sum / max(1, active_count))
+        active_px_sum = sum(latest_quotes[s].mid_price / initial_prices[s] for s in active_symbols if s in latest_quotes)
+        bnh_val = initial_cash * (active_px_sum / max(1, len(latest_quotes)))
 
-        ready_symbols = [s for s in symbols if feature_trackers[s].count >= 40 and s in latest_quotes]
-        if len(ready_symbols) < len(symbols) * 0.5:
+        ready_symbols = [s for s in active_symbols if feature_trackers[s].count >= 40 and s in latest_quotes]
+        if len(ready_symbols) < len(active_symbols) * 0.5:
             equity_curve_records.append({
                 "time": ts,
                 "equity": current_eq,
                 "benchmark": bnh_val,
                 "cash": current_portfolio.cash,
-                "weights": {s: 0.0 for s in symbols}
+                "weights": {s: 0.0 for s in active_symbols}
             })
             continue
 
@@ -184,7 +169,7 @@ def run_walkforward_simulation(
         positive_assets = [(sym, score, std, ir) for sym, (score, std, ir) in asset_scores.items() if score > 0]
         positive_assets.sort(key=lambda x: x[3], reverse=True)
 
-        target_weights: Dict[str, float] = {s: 0.0 for s in symbols}
+        target_weights: Dict[str, float] = {s: 0.0 for s in active_symbols}
         allocated_leverage = 0.0
 
         for sym, score, std, ir in positive_assets:
@@ -226,7 +211,7 @@ def run_walkforward_simulation(
                 })
 
         post_portfolio = broker.get_portfolio_state()
-        curr_weights = {s: post_portfolio.get_position_weight(s) for s in symbols}
+        curr_weights = {s: post_portfolio.get_position_weight(s) for s in active_symbols}
         equity_curve_records.append({
             "time": ts,
             "equity": post_portfolio.equity,
@@ -244,12 +229,12 @@ def run_walkforward_simulation(
     return_pct = (net_profit / initial_cash) * 100.0
     total_fees = sum(f.fee for f in broker.fill_history)
 
-    bnh_start_sum = sum(asset_bars[sym][0].close for sym in symbols)
-    bnh_end_sum = sum(asset_bars[sym][-1].close for sym in symbols)
+    bnh_start_sum = sum(asset_bars[sym][0].close for sym in active_symbols)
+    bnh_end_sum = sum(asset_bars[sym][-1].close for sym in active_symbols)
     bnh_return_pct = ((bnh_end_sum - bnh_start_sum) / bnh_start_sum) * 100.0
 
     print("=" * 110)
-    print("WALK-FORWARD PORTFOLIO SIMULATION COMPLETE (OPTIMIZED)")
+    print("WALK-FORWARD PORTFOLIO SIMULATION COMPLETE")
     print("=" * 110)
     print(f"  Simulation Engine Runtime  : {sim_duration * 1000:.2f} ms ({len(unique_timestamps):,} sequential ticks)")
     print(f"  Total Script Elapsed Time  : {total_elapsed:.3f} s")
@@ -263,24 +248,25 @@ def run_walkforward_simulation(
     print(f"  Total Fees Paid            : ${total_fees:,.2f}")
     print("=" * 110 + "\n")
 
+    # Generate report
     asset_summaries = {}
-    for spec in universe:
-        sym = spec.symbol
+    for sym in active_symbols:
         if sym in final_state.positions:
             pos = final_state.positions[sym]
             start_px = asset_bars[sym][0].close
             end_px = asset_bars[sym][-1].close
             asset_ret = ((end_px - start_px) / start_px) * 100.0
             asset_summaries[sym] = {
-                "name": spec.name,
-                "sector": spec.sector,
+                "name": sym,
+                "sector": "Multi-Asset",
                 "current_price": pos.current_price,
                 "quantity": pos.quantity,
                 "position_value": pos.quantity * pos.current_price,
                 "asset_return_pct": asset_ret
             }
 
-    dashboard_path = "reports/portfolio_walkforward_dashboard.html"
+    dashboard_path = os.path.join(PROJECT_ROOT, "reports/portfolio_walkforward_dashboard.html")
+    os.makedirs(os.path.dirname(dashboard_path), exist_ok=True)
     PortfolioDashboardGenerator.generate_html(
         equity_series=equity_curve_records,
         trade_logs=trade_ledger,
@@ -290,26 +276,11 @@ def run_walkforward_simulation(
         benchmark_return_pct=bnh_return_pct,
         output_path=dashboard_path
     )
-    print(f"[+] Interactive Portfolio Dashboard Generated: {os.path.abspath(dashboard_path)}\n")
-
-    return final_equity, return_pct, bnh_return_pct
+    print(f"[+] Interactive Portfolio Dashboard: {dashboard_path}\n")
 
 
 if __name__ == "__main__":
-    universe_spec = [
-        AssetSpec("SPY", "S&P 500 ETF", "Broad Market", AssetClass.STOCK, 0.0002),
-        AssetSpec("QQQ", "Nasdaq 100 ETF", "Broad Market", AssetClass.STOCK, 0.0002),
-        AssetSpec("AAPL", "Apple Inc.", "Technology", AssetClass.STOCK, 0.0005),
-        AssetSpec("MSFT", "Microsoft Corp.", "Technology", AssetClass.STOCK, 0.0005),
-        AssetSpec("NVDA", "NVIDIA Corp.", "Semiconductors", AssetClass.STOCK, 0.0005),
-        AssetSpec("AMD", "Advanced Micro Devices", "Semiconductors", AssetClass.STOCK, 0.0005),
-        AssetSpec("LLY", "Eli Lilly", "Healthcare", AssetClass.STOCK, 0.0005),
-        AssetSpec("XOM", "Exxon Mobil", "Energy", AssetClass.STOCK, 0.0005),
-        AssetSpec("GLD", "Gold ETF", "Commodities", AssetClass.COMMODITY, 0.0003),
-        AssetSpec("SLV", "Silver ETF", "Commodities", AssetClass.COMMODITY, 0.0003),
-        AssetSpec("BTC-USD", "Bitcoin", "Crypto L1", AssetClass.CRYPTO_SPOT, 0.0006),
-        AssetSpec("ETH-USD", "Ethereum", "Crypto L1", AssetClass.CRYPTO_SPOT, 0.0006),
-        AssetSpec("SOL-USD", "Solana", "Crypto L1", AssetClass.CRYPTO_SPOT, 0.0006),
+    universe = [
+        "SPY", "QQQ", "AAPL", "MSFT", "NVDA", "AMD", "LLY", "XOM", "GLD", "SLV", "BTC-USD", "ETH-USD", "SOL-USD"
     ]
-
-    run_walkforward_simulation(universe_spec, initial_cash=100000.0)
+    run_portfolio_simulation(universe, initial_cash=100000.0)

@@ -94,3 +94,4 @@ function renderCandlestickChart(containerId, ohlcvData) {
     chart.timeScale().fitContent();
     return chart;
 }
+

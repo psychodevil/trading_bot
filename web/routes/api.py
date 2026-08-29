@@ -292,3 +292,4 @@ def run_portfolio_simulation_api(
         "trades": trade_ledger,
         "positions": positions_summary
     }
+

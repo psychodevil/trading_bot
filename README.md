@@ -1,6 +1,6 @@
 # 🌌 QuantumAlpha: Multi-Asset Probabilistic Trading & Cost-Aware Optimization Framework
 
-[![CI / Test Suite](https://img.shields.io/badge/tests-23%20passed-success.svg?style=for-the-badge&logo=pytest)](https://github.com/)
+[![CI / Test Suite](https://img.shields.io/badge/tests-38%20passed-success.svg?style=for-the-badge&logo=pytest)](https://github.com/)
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg?style=for-the-badge&logo=python)](https://python.org)
 [![Docker Support](https://img.shields.io/badge/docker-ready-2496ED.svg?style=for-the-badge&logo=docker)](https://docker.com)
 [![TradingView](https://img.shields.io/badge/charts-Lightweight--Charts%20v4.1-131722.svg?style=for-the-badge&logo=tradingview)](https://www.tradingview.com/lightweight-charts/)
@@ -19,10 +19,10 @@ An institutional-grade quantitative trading framework that estimates **dynamic c
   * Optimized from $O(N^2)$ historical recomputation down to $O(1)$ streaming state updates, achieving a **130x speedup** (evaluates 210,000+ bars across 62 assets in under 75 seconds).
 * **97.6% Inaction Band Efficiency**:
   * Freezes micro-rebalancing transactions inside the no-trade zone $[\underline{w}, \bar{w}]$, saving **hundreds of thousands of dollars in fee drag & slippage**.
-* **Zero Dependency Hell**:
-  * Core engine is 100% pure Python with zero mandatory third-party dependencies, plus optional standard adapters for **Backtrader** and **VectorBT**.
-* **TradingView Lightweight-Charts Interactive Dashboards**:
-  * Standalone, zero-server HTML5 interactive visualizer featuring candlestick charts, buy/sell markers, probability cones, asset allocation area charts, and trade decision ledgers.
+* **Modern Web Application & TradingView Charts**:
+  * Full-featured Flask web platform featuring interactive equity curves, dynamic asset allocation timelines, 62-asset market explorer, and an on-demand backtesting lab.
+* **Zero Dependency Hell & Strict Isolation**:
+  * Core engine is 100% pure Python with zero mandatory third-party dependencies, plus automated virtual environment management (`setup_env.sh`) and Docker containerization.
 
 ---
 
@@ -56,9 +56,9 @@ flowchart TD
         D3 --> D4
     end
 
-    subgraph Visualization["5. Interactive TradingView Visualizer"]
-        D4 --> E1[Interactive Lightweight-Charts Dashboard]
-        D4 --> E2[Real-Time Allocation Timeline & Trade Ledger]
+    subgraph Visualization["5. Web Platform & Interactive Dashboards"]
+        D4 --> E1[Flask Web Application http://localhost:8088]
+        D4 --> E2[Lightweight-Charts Live Dashboards & Trade Ledger]
     end
 ```
 
@@ -94,67 +94,42 @@ $$\Delta w_{\text{inaction}} = \frac{c_{\text{fee}} + s/2}{\gamma \cdot \sigma_i
 
 $$\underline{w}_i = \max\left(w_{\min}, \; w_i^* - \Delta w_{\text{inaction}}\right), \qquad \bar{w}_i = \min\left(w_{\max}, \; w_i^* + \Delta w_{\text{inaction}}\right)$$
 
-Whenever $w_{i, \text{current}} \in [\underline{w}_i, \bar{w}_i]$, the algorithm freezes rebalancing, saving $100\%$ of turnover costs.
-
 ---
 
-## 📊 Whole-Market Benchmark (62 Assets Across 21 Sectors)
+## 🚀 Quickstart
 
-Evaluated across **213,151 historical bars** from live exchanges:
-
-| Sector / Market Segment | Assets | Strategy Return | Buy & Hold | Excess Alpha | Avg Sharpe | Inaction Efficiency |
-|---|---|---|---|---|---|---|
-| **Semiconductors (AMD, NVDA, AVGO)** | 3 | **+61.45%** | +73.01% | -11.56% | **0.69** | **97.6%** |
-| **Commodities (GLD, SLV, USO)** | 3 | **+50.28%** | +57.09% | -6.81% | **0.98** | **97.0%** |
-| **Energy (XOM, CVX, XLE)** | 3 | **+34.04%** | +34.36% | -0.32% | **1.07** | **97.8%** |
-| **Healthcare (LLY, JNJ, XLV, UNH, PFE)** | 5 | **+28.38%** | +36.33% | -7.95% | **0.93** | **98.0%** |
-| **Industrials (XLI)** | 1 | **+14.88%** | +15.44% | -0.56% | **0.63** | **97.9%** |
-| **Broad Market ETFs (SPY, QQQ, IWM, DIA)** | 4 | **+14.13%** | +21.36% | -7.23% | **0.60** | **97.6%** |
-| **Technology (AAPL, MSFT, XLK, PLTR)** | 4 | **+13.22%** | +24.25% | -11.02% | **0.51** | **96.8%** |
-| **Materials (XLB)** | 1 | **+12.41%** | +15.38% | -2.97% | **0.51** | **97.0%** |
-| **Financials (BAC, JPM, XLF, V, MA)** | 5 | **+2.67%** | +11.96% | -9.29% | **0.09** | **97.4%** |
-| **Crypto Payments (XRP-USD)** | 1 | **-21.92%** | -53.50% | **+31.57% Alpha** | -0.53 | **98.0%** |
-| **Crypto Meme (DOGE-USD)** | 1 | **-36.25%** | -61.87% | **+25.63% Alpha** | -1.10 | **98.0%** |
-| **Crypto L1s (BTC, ETH, SOL, BNB, ADA, DOT, AVAX)** | 7 | **-36.06%** | -53.16% | **+17.10% Alpha** | -1.35 | **98.1%** |
-| **Crypto Oracle (LINK-USD)** | 1 | **-38.85%** | -54.21% | **+15.37% Alpha** | -1.16 | **98.0%** |
-| **Whole Market Total** | **62** | **+2.29%** | **+7.04%** | **-4.75%** | **-6.64** | **97.6%** |
-
----
-
-## 🚀 Quickstart & Installation
-
-### 1. Clone & Run with Pure Python (Zero Dependencies Needed)
+### 1. Setup Isolated Virtual Environment
 
 ```bash
-git clone https://github.com/username/trading.git
-cd trading
+# Initialize isolated virtual environment & dependencies
+./setup_env.sh
 
-# Run unit test suite (23 tests)
-python3 -m unittest discover tests
-
-# Run the $100,000 strictly causal walk-forward portfolio simulation (~9 seconds)
-python3 run_walkforward_portfolio.py
-
-# Run the 62-asset whole-market benchmark (~74 seconds)
-python3 run_final_market_benchmark.py
+# Activate virtual environment
+source .venv/bin/activate
 ```
 
-### 2. View Interactive TradingView Dashboards
+### 2. Run Commands
 
 ```bash
-python3 -m http.server 8088 --directory reports
+# 1. Run full unit & integration test suite (38 tests)
+make test
+
+# 2. Launch QuantumAlpha Web Application
+make web
+# Open: http://localhost:8088/
+
+# 3. Run $100k Walk-Forward Portfolio Simulation
+make portfolio
+
+# 4. Run 62-Asset Global Market Alpha Benchmark
+make benchmark
 ```
-* **Walk-Forward Multi-Asset Portfolio Dashboard**: `http://localhost:8088/portfolio_walkforward_dashboard.html`
-* **62-Asset Global Market Master Dashboard**: `http://localhost:8088/final_market_benchmark.html`
 
 ### 3. Run in Isolated Docker Container
 
 ```bash
-# Build and start containerized backtesting service
+# Build and start containerized web service
 docker compose up --build
-
-# Run Backtrader / VectorBT scripts inside container
-docker compose run trading-bot python run_walkforward_portfolio.py
 ```
 
 ---
@@ -165,32 +140,50 @@ docker compose run trading-bot python run_walkforward_portfolio.py
 trading/
 ├── Dockerfile                             # Container definition
 ├── docker-compose.yml                     # Docker Compose configuration
-├── Makefile                               # Automation shortcuts (make test, make run)
-├── requirements.txt                       # Scientific & backtesting stack
+├── Makefile                               # Task automation (make test, make web, make portfolio)
+├── requirements.txt                       # Dependencies
+├── setup_env.sh                           # Isolated venv installer
+├── LICENSE                                # MIT License
 ├── README.md                              # Main documentation
-├── run_walkforward_portfolio.py           # $100k Causal Walk-Forward Multi-Asset Simulator
-├── run_final_market_benchmark.py          # 62-Asset High-Speed Whole-Market Benchmark
-├── download_whole_market.py               # Parallel Yahoo Finance historical ingestor
-├── data/
-│   └── market_universe.py                 # 62-asset multi-sector universe specs
-├── reports/
-│   ├── portfolio_walkforward_dashboard.html # TradingView Portfolio Dashboard
-│   └── final_market_benchmark.html        # TradingView 62-Asset Master Report
-├── tests/
-│   ├── test_distributions.py              # Statistical distribution unit tests
-│   ├── test_optimizer.py                  # Cost-aware optimizer & inaction band tests
-│   ├── test_instruments.py                # Stocks, Crypto, Forex, Options, Futures tests
-│   ├── test_broker.py                     # Execution & margin accounting tests
-│   └── test_strategies.py                 # Strategy unit tests
-└── trading_bot/
-    ├── adapters/                          # Backtrader & VectorBT integration adapters
-    ├── core/                              # Instruments, distributions, events, math
-    ├── forecast/                          # O(1) Online feature engine, Bayesian forecasting
-    ├── optimizer/                         # Utility theory, cost models, inaction bands
-    ├── execution/                         # Simulated broker, slippage, market impact
-    ├── strategies/                        # AlphaPortfolio, SecularTrend, CryptoPerp, Options
-    ├── backtest/                          # Backtest engine, metrics, time sampling
-    └── visualization/                     # Lightweight-Charts HTML report generators
+│
+├── scripts/                               # Clean CLI execution scripts
+│   ├── run_portfolio.py                   # $100k Causal Walk-Forward Multi-Asset Simulator
+│   ├── run_benchmark.py                   # 62-Asset Global Market Alpha Benchmark
+│   └── download_data.py                   # Yahoo Finance multi-asset data downloader
+│
+├── web/                                   # Modern Web Platform & REST API
+│   ├── app.py                             # Flask Application factory & server
+│   ├── routes/                            # Views & JSON REST API endpoints
+│   ├── templates/                         # HTML templates (Dashboard, Portfolio, Markets, Simulator, Trades)
+│   └── static/                            # CSS stylesheets and Lightweight-Charts JavaScript
+│
+├── trading_bot/                           # Core Quantitative Trading Engine
+│   ├── core/                              # Instruments, distributions, events, math utils
+│   ├── data/                              # Historical loader, resampler, synthetic generator, universe
+│   ├── forecast/                          # O(1) Online feature engine, Bayesian forecasting
+│   ├── optimizer/                         # Utility theory, cost models, inaction bands
+│   ├── execution/                         # Simulated broker, margin accounting, slippage
+│   ├── strategies/                        # Quantitative strategies (AlphaPortfolio, SecularTrend, Perp, Options)
+│   ├── backtest/                          # Backtest engine & performance metrics
+│   ├── adapters/                          # Backtrader & VectorBT integration adapters
+│   └── visualization/                     # Lightweight-Charts HTML report generators
+│
+├── tests/                                 # 38 Automated Unit & Integration Tests
+│   ├── test_distributions.py              # Statistical distributions
+│   ├── test_optimizer.py                  # Cost-aware position optimizer
+│   ├── test_instruments.py                # Stocks, Crypto, Forex, Options, Futures
+│   ├── test_broker.py                     # Execution & margin accounting
+│   ├── test_strategies.py                 # Strategy logic & walk-forward
+│   ├── test_backtest_engine.py            # Backtest engine lifecycle
+│   └── test_web_app.py                    # Flask routes & REST API endpoints
+│
+├── docs/                                  # Technical Documentation
+│   ├── ARCHITECTURE.md                    # System architecture & mathematical derivations
+│   ├── STRATEGIES.md                      # Quantitative strategies guide
+│   └── BENCHMARK_RESULTS.md               # 62-asset empirical benchmark report
+│
+├── data/                                  # Local historical data cache
+└── reports/                               # Generated TradingView HTML reports
 ```
 
 ---

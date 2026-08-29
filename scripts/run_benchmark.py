@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-High-Performance Final Whole-Market Alpha Benchmark across 62 Real Market Assets.
-Evaluates AlphaPortfolioStrategy vs Buy & Hold across every sector in under 3 seconds!
+QuantumAlpha: 62-Asset Global Market Alpha Benchmark.
+Evaluates AlphaPortfolioStrategy vs Buy & Hold across every sector in parallel.
 """
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -9,10 +9,11 @@ from dataclasses import dataclass
 import os
 import sys
 import time
-from typing import List, Dict, Tuple, Any, Optional
+from typing import List, Dict, Any, Optional
 
-# Ensure trading_bot is in sys.path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from trading_bot.data.market_universe import MARKET_UNIVERSE, MarketAssetInfo
 from trading_bot.core.instruments import Stock, CryptoSpot, ForexPair, CommodityAsset, AssetClass
@@ -34,7 +35,7 @@ class MarketBenchmarkItem:
 def run_single_asset_benchmark(asset_info: MarketAssetInfo) -> Optional[MarketBenchmarkItem]:
     sym = asset_info.symbol
     safe_sym = sym.replace('^', '').replace('=', '_')
-    csv_path = f"data/historical/{safe_sym}_1h_1y.csv"
+    csv_path = os.path.join(PROJECT_ROOT, f"data/historical/{safe_sym}_1h_1y.csv")
 
     if not os.path.exists(csv_path):
         return None
@@ -69,7 +70,6 @@ def run_single_asset_benchmark(asset_info: MarketAssetInfo) -> Optional[MarketBe
 
     engine = BacktestEngine(initial_cash=100000.0)
     res = engine.run(strat, inst, bars, timeframe_desc="1-Hour (AlphaPortfolio)")
-
     alpha = res.metrics.total_return_pct - bnh_return_pct
 
     return MarketBenchmarkItem(
@@ -82,7 +82,7 @@ def run_single_asset_benchmark(asset_info: MarketAssetInfo) -> Optional[MarketBe
 
 def main():
     print("\n" + "=" * 125)
-    print("FINAL HIGH-SPEED WHOLE-MARKET BENCHMARK: ALPHAPORTFOLIO VS BUY-AND-HOLD (62 REAL ASSETS)")
+    print("QUANTUMALPHA: WHOLE-MARKET BENCHMARK (62 ASSETS ACROSS ALL SECTORS)")
     print("=" * 125)
 
     start_t = time.time()
@@ -105,14 +105,7 @@ def main():
     for item in benchmark_items:
         sec = item.info.sector
         if sec not in sector_stats:
-            sector_stats[sec] = {
-                "count": 0,
-                "bot_rets": [],
-                "bnh_rets": [],
-                "alphas": [],
-                "sharpes": [],
-                "inactions": []
-            }
+            sector_stats[sec] = {"count": 0, "bot_rets": [], "bnh_rets": [], "alphas": [], "sharpes": [], "inactions": []}
         s = sector_stats[sec]
         s["count"] += 1
         s["bot_rets"].append(item.bot_result.metrics.total_return_pct)
@@ -122,19 +115,12 @@ def main():
         s["inactions"].append(item.bot_result.metrics.inaction_efficiency_pct)
 
     print("\n" + "=" * 125)
-    print("FINAL SECTOR AGGREGATES & ALPHA GENERATION BREAKDOWN")
+    print("SECTOR PERFORMANCE & ALPHA BREAKDOWN")
     print("=" * 125)
     print(f"{'Sector / Market Segment':<22} | {'Assets':<6} | {'Bot Return':<12} | {'Buy & Hold':<12} | {'Alpha (Excess)':<16} | {'Avg Sharpe':<10} | {'Inaction Eff':<12}")
     print("-" * 125)
 
-    all_bot_rets = []
-    all_bnh_rets = []
-    all_alphas = []
-    all_sharpes = []
-    all_inactions = []
-    profitable_count = 0
-    beat_market_count = 0
-
+    all_bot_rets, all_bnh_rets, all_alphas, all_sharpes, all_inactions = [], [], [], [], []
     for sec, s in sector_stats.items():
         avg_bot_r = sum(s["bot_rets"]) / s["count"]
         avg_bnh_r = sum(s["bnh_rets"]) / s["count"]
@@ -150,13 +136,6 @@ def main():
 
         print(f"{sec:<22} | {s['count']:>6} | {avg_bot_r:>+10.2f}% | {avg_bnh_r:>+10.2f}% | {avg_alpha:>+13.2f}% | {avg_sharpe:>10.2f} | {avg_inaction:>10.1f}%")
 
-    for r in all_bot_rets:
-        if r > 0:
-            profitable_count += 1
-    for a in all_alphas:
-        if a > 0:
-            beat_market_count += 1
-
     total_n = len(benchmark_items)
     market_bot_r = sum(all_bot_rets) / total_n
     market_bnh_r = sum(all_bnh_rets) / total_n
@@ -167,21 +146,19 @@ def main():
     print("-" * 125)
     print(f"{'WHOLE MARKET TOTAL':<22} | {total_n:>6} | {market_bot_r:>+10.2f}% | {market_bnh_r:>+10.2f}% | {market_alpha:>+13.2f}% | {market_sharpe:>10.2f} | {market_inaction:>10.1f}%")
     print("=" * 125)
-    print(f"[+] Profitable Assets: {profitable_count}/{total_n} ({profitable_count/total_n*100:.1f}%) | Beating Market Buy & Hold: {beat_market_count}/{total_n} ({beat_market_count/total_n*100:.1f}%)")
-    print(f"[+] Total benchmark runtime: {total_elapsed:.3f}s across {total_n} market instruments ({len(benchmark_items)*3400:,} bars evaluated).\n")
+    print(f"[+] Total benchmark runtime: {total_elapsed:.3f}s across {total_n} instruments ({len(benchmark_items)*3400:,} bars).\n")
 
-    # Generate report
-    report_path = "reports/final_market_benchmark.html"
-    os.makedirs("reports", exist_ok=True)
+    # Generate master report
+    report_path = os.path.join(PROJECT_ROOT, "reports/final_market_benchmark.html")
+    os.makedirs(os.path.dirname(report_path), exist_ok=True)
     all_results = [item.bot_result for item in benchmark_items]
     ReportGenerator.generate_html_report(
         results=all_results,
         title=f"Final Whole-Market Alpha Benchmark ({total_n} Assets Across All Sectors)",
         output_path=report_path
     )
-    print(f"[+] Master TradingView Dashboard: {os.path.abspath(report_path)}\n")
+    print(f"[+] TradingView Master Report: {report_path}\n")
 
 
 if __name__ == "__main__":
     main()
-

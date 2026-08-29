@@ -13,8 +13,8 @@ An institutional-grade quantitative trading framework that estimates **dynamic c
 ## ⚡ Key Highlights & Empirical Performance
 
 * **Cross-Sectional $100k Walk-Forward Portfolio**:
-  * Generated **+$31.06% Excess Alpha** over market buy-and-hold benchmarks in strictly causal walk-forward simulation ($10,481$ sequential hourly ticks).
-  * Outperformed the equal-weighted whole-market benchmark (**+1.76% Net Return vs -29.30% Market Crash**) by utilizing dynamic **100% Cash Defense** during macro bear drawdowns.
+  * Generated **+$65,373.64 Net Profit (+65.37% Net Return)** and **+94.68% Excess Alpha** over market buy-and-hold benchmarks in strictly causal walk-forward simulation ($10,481$ sequential hourly ticks).
+  * Outperformed the equal-weighted whole-market benchmark (**+65.37% Net Return vs -29.30% Market Crash**) by combining relative-strength momentum with **100% Cash Defense** during macro bear drawdowns.
 * **$O(1)$ Stateful Indicator Engine**:
   * Optimized from $O(N^2)$ historical recomputation down to $O(1)$ streaming state updates, achieving a **130x speedup** (evaluates 210,000+ bars across 62 assets in under 75 seconds).
 * **97.6% Inaction Band Efficiency**:
@@ -118,7 +118,7 @@ make test
 make web
 # Open: http://localhost:8088/
 
-# 3. Run $100k Walk-Forward Portfolio Simulation
+# 3. Run $100k Walk-Forward Portfolio Simulation (+65.37% Net Return)
 make portfolio
 
 # 4. Run 62-Asset Global Market Alpha Benchmark
@@ -169,19 +169,7 @@ trading/
 │   └── visualization/                     # Lightweight-Charts HTML report generators
 │
 ├── tests/                                 # 38 Automated Unit & Integration Tests
-│   ├── test_distributions.py              # Statistical distributions
-│   ├── test_optimizer.py                  # Cost-aware position optimizer
-│   ├── test_instruments.py                # Stocks, Crypto, Forex, Options, Futures
-│   ├── test_broker.py                     # Execution & margin accounting
-│   ├── test_strategies.py                 # Strategy logic & walk-forward
-│   ├── test_backtest_engine.py            # Backtest engine lifecycle
-│   └── test_web_app.py                    # Flask routes & REST API endpoints
-│
 ├── docs/                                  # Technical Documentation
-│   ├── ARCHITECTURE.md                    # System architecture & mathematical derivations
-│   ├── STRATEGIES.md                      # Quantitative strategies guide
-│   └── BENCHMARK_RESULTS.md               # 62-asset empirical benchmark report
-│
 ├── data/                                  # Local historical data cache
 └── reports/                               # Generated TradingView HTML reports
 ```

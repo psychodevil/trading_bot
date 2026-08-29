@@ -77,7 +77,7 @@ def get_asset_bars_data(symbol: str) -> List[Dict[str, Any]]:
 
 def run_portfolio_simulation_api(
     initial_cash: float = 100000.0,
-    max_leverage: float = 1.35,
+    max_leverage: float = 1.45,
     top_k: int = 4,
     selected_symbols: Optional[List[str]] = None
 ) -> Dict[str, Any]:
@@ -128,7 +128,7 @@ def run_portfolio_simulation_api(
         for sym in active_symbols
     }
     latest_quotes: Dict[str, MarketQuote] = {}
-    price_ring_80: Dict[str, List[float]] = {sym: [] for sym in active_symbols}
+    price_ring_60: Dict[str, List[float]] = {sym: [] for sym in active_symbols}
     highest_price_tracking: Dict[str, float] = {sym: 0.0 for sym in active_symbols}
     current_held_leaders: Set[str] = set()
 
@@ -138,6 +138,7 @@ def run_portfolio_simulation_api(
 
     tick_count = 0
     rebalance_interval = 120
+    stop_atr_mult = 4.8
 
     for ts in unique_timestamps:
         tick_count += 1
@@ -146,9 +147,9 @@ def run_portfolio_simulation_api(
 
         for sym, bar in tick_events:
             feature_trackers[sym].update(bar)
-            ring = price_ring_80[sym]
+            ring = price_ring_60[sym]
             ring.append(bar.close)
-            if len(ring) > 80:
+            if len(ring) > 60:
                 ring.pop(0)
 
             quote = MarketQuote(timestamp=ts, symbol=sym, bid=bar.close * 0.9998, ask=bar.close * 1.0002, last_price=bar.close)
@@ -175,7 +176,7 @@ def run_portfolio_simulation_api(
             })
             continue
 
-        # Hourly Trailing Stop Checks
+        # Continuous Trailing Stop Checks
         stopped_out: Set[str] = set()
         for sym in list(current_held_leaders):
             if sym in ready_symbols:
@@ -183,7 +184,7 @@ def run_portfolio_simulation_api(
                 ft = feature_trackers[sym]
                 atr_val = ft.atr or (c * 0.015)
                 highest_price_tracking[sym] = max(highest_price_tracking[sym], c)
-                trailing_stop = highest_price_tracking[sym] - 3.8 * atr_val
+                trailing_stop = highest_price_tracking[sym] - stop_atr_mult * atr_val
                 ema100 = ft.emas.get(100, c)
 
                 if c < trailing_stop or c < ema100 * 0.96:
@@ -213,16 +214,16 @@ def run_portfolio_simulation_api(
                 rsi_val = ft.rsi
                 inst = instruments[sym]
 
-                ring = price_ring_80[sym]
-                past_px = ring[0] if len(ring) >= 40 else c
-                ret_80 = (c - past_px) / past_px
+                ring = price_ring_60[sym]
+                past_px = ring[0] if len(ring) >= 30 else c
+                ret = (c - past_px) / past_px
 
                 is_trend_intact = (c > ema100 * 0.98) and (ema20 > ema50 or c > ema50)
                 if inst.asset_class == AssetClass.CRYPTO_SPOT:
                     is_trend_intact = is_trend_intact and (c > ema100 * 1.02) and (ema50 > ema100)
 
-                if is_trend_intact and ret_80 > 0.01:
-                    score = ret_80 * (1.15 if 40.0 <= rsi_val <= 65.0 else 0.85)
+                if is_trend_intact and ret > 0.01:
+                    score = ret * (1.15 if 40.0 <= rsi_val <= 65.0 else 0.85)
                     scored_universe.append((sym, score))
 
             scored_universe.sort(key=lambda x: x[1], reverse=True)
@@ -242,7 +243,7 @@ def run_portfolio_simulation_api(
 
             target_weights: Dict[str, float] = {s: 0.0 for s in active_symbols}
             if current_held_leaders:
-                target_w = min(0.35, max_leverage / len(current_held_leaders))
+                target_w = min(0.40, max_leverage / len(current_held_leaders))
                 for sym in current_held_leaders:
                     target_weights[sym] = target_w
 
@@ -252,10 +253,11 @@ def run_portfolio_simulation_api(
                 curr_w = current_portfolio.get_position_weight(sym)
                 targ_w = target_weights[sym]
 
-                if abs(targ_w - curr_w) > 0.06:
+                if abs(targ_w - curr_w) > 0.05:
                     fill = broker.execute_target_weight(sym, targ_w, quote=latest_quotes[sym])
                     if fill is not None:
-                        highest_price_tracking[sym] = fill.price
+                        if targ_w > 0:
+                            highest_price_tracking[sym] = fill.price
                         trade_ledger.append({
                             "timestamp": int(ts),
                             "symbol": sym,

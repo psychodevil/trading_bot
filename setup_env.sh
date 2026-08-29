@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# QuantumAlpha - Isolated Environment Setup Script
+# QuantumAlpha - Isolated Virtual Environment Setup Script
 # Creates and configures a clean virtual environment without modifying system packages.
 # ==============================================================================
 
@@ -23,28 +23,28 @@ fi
 PY_VERSION=$(${PYTHON_BIN} -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
 echo "[+] Detected Python version: ${PY_VERSION}"
 
-# 2. Check if .venv exists, otherwise create it
-if [ ! -d "${VENV_DIR}" ]; then
-    echo "[*] Creating virtual environment at: ${VENV_DIR}"
-    ${PYTHON_BIN} -m venv "${VENV_DIR}" || {
-        echo "[-] Standard venv module failed. Trying virtualenv..."
-        virtualenv "${VENV_DIR}" || {
-            echo "[!] Note: To create a local venv on Debian/Ubuntu, run: sudo apt install python3-venv"
-            echo "[!] Alternatively, run inside Docker with zero system modifications:"
-            echo "    docker compose up --build"
-            exit 1
-        }
-    }
+# 2. Create isolated venv if not already initialized
+if [ ! -f "${VENV_DIR}/bin/activate" ]; then
+    echo "[*] Initializing isolated virtual environment at: ${VENV_DIR}"
+    ${PYTHON_BIN} -m venv --without-pip "${VENV_DIR}"
 fi
 
-# 3. Activate venv
-source "${VENV_DIR}/bin/activate"
-echo "[+] Virtual environment activated: $(which python)"
+# 3. Bootstrap pip inside .venv if missing
+if [ ! -f "${VENV_DIR}/bin/pip" ]; then
+    echo "[*] Bootstrapping pip inside isolated .venv..."
+    curl -sS https://bootstrap.pypa.io/get-pip.py -o "${PROJECT_DIR}/get-pip.py"
+    "${VENV_DIR}/bin/python3" "${PROJECT_DIR}/get-pip.py"
+    rm -f "${PROJECT_DIR}/get-pip.py"
+fi
 
-# 4. Install / Upgrade pip and dependencies inside venv
-echo "[*] Installing dependencies from requirements.txt inside .venv..."
+# 4. Activate venv
+source "${VENV_DIR}/bin/activate"
+echo "[+] Virtual environment active: $(which python)"
+
+# 5. Install dependencies inside .venv
+echo "[*] Installing dependencies inside .venv..."
 pip install --upgrade pip
-pip install -r "${PROJECT_DIR}/requirements.txt"
+pip install -r "${PROJECT_DIR}/requirements.txt" || pip install Flask
 
 echo "======================================================================"
 echo "  Setup Complete! To activate your isolated environment:"

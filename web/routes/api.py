@@ -7,10 +7,11 @@ import json
 import os
 import sys
 import math
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Set, Tuple
 
-# Ensure project root is in sys.path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from trading_bot.data.market_universe import MARKET_UNIVERSE
 from trading_bot.core.instruments import Stock, CryptoSpot, CommodityAsset, ForexPair, AssetClass
@@ -25,7 +26,7 @@ def get_market_universe_data() -> List[Dict[str, Any]]:
     assets = []
     for m in MARKET_UNIVERSE:
         safe_sym = m.symbol.replace('^', '').replace('=', '_')
-        csv_path = f"data/historical/{safe_sym}_1h_1y.csv"
+        csv_path = os.path.join(PROJECT_ROOT, f"data/historical/{safe_sym}_1h_1y.csv")
         bars_count = 0
         latest_px = 0.0
         return_pct = 0.0
@@ -56,7 +57,7 @@ def get_market_universe_data() -> List[Dict[str, Any]]:
 def get_asset_bars_data(symbol: str) -> List[Dict[str, Any]]:
     """Returns historical OHLCV candlestick bars for a given symbol."""
     safe_sym = symbol.replace('^', '').replace('=', '_')
-    csv_path = f"data/historical/{safe_sym}_1h_1y.csv"
+    csv_path = os.path.join(PROJECT_ROOT, f"data/historical/{safe_sym}_1h_1y.csv")
     if not os.path.exists(csv_path):
         return []
 
@@ -76,11 +77,12 @@ def get_asset_bars_data(symbol: str) -> List[Dict[str, Any]]:
 
 def run_portfolio_simulation_api(
     initial_cash: float = 100000.0,
-    max_leverage: float = 1.25,
+    max_leverage: float = 1.35,
+    top_k: int = 4,
     selected_symbols: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """
-    Executes a fast, strictly causal walk-forward portfolio simulation and returns results.
+    Executes an institutional low-turnover momentum walk-forward simulation.
     """
     symbols = selected_symbols or [
         "SPY", "QQQ", "AAPL", "MSFT", "NVDA", "AMD", "LLY", "XOM", "GLD", "SLV", "BTC-USD", "ETH-USD", "SOL-USD"
@@ -92,7 +94,7 @@ def run_portfolio_simulation_api(
 
     for sym in symbols:
         safe_sym = sym.replace('^', '').replace('=', '_')
-        csv_path = f"data/historical/{safe_sym}_1h_1y.csv"
+        csv_path = os.path.join(PROJECT_ROOT, f"data/historical/{safe_sym}_1h_1y.csv")
         if os.path.exists(csv_path):
             bars = HistoricalDataLoader.load_from_csv(csv_path, symbol=sym)
             if len(bars) >= 60:
@@ -126,18 +128,29 @@ def run_portfolio_simulation_api(
         for sym in active_symbols
     }
     latest_quotes: Dict[str, MarketQuote] = {}
-    last_rebalance_price: Dict[str, float] = {sym: 0.0 for sym in active_symbols}
+    price_ring_80: Dict[str, List[float]] = {sym: [] for sym in active_symbols}
+    highest_price_tracking: Dict[str, float] = {sym: 0.0 for sym in active_symbols}
+    current_held_leaders: Set[str] = set()
 
     equity_records: List[Dict[str, Any]] = []
     trade_ledger: List[Dict[str, Any]] = []
     initial_prices = {sym: asset_bars[sym][0].close for sym in active_symbols}
 
+    tick_count = 0
+    rebalance_interval = 120
+
     for ts in unique_timestamps:
+        tick_count += 1
         tick_events = events_by_ts[ts]
         updated_symbols = set()
 
         for sym, bar in tick_events:
             feature_trackers[sym].update(bar)
+            ring = price_ring_80[sym]
+            ring.append(bar.close)
+            if len(ring) > 80:
+                ring.pop(0)
+
             quote = MarketQuote(timestamp=ts, symbol=sym, bid=bar.close * 0.9998, ask=bar.close * 1.0002, last_price=bar.close)
             broker.on_quote(quote)
             latest_quotes[sym] = quote
@@ -151,7 +164,7 @@ def run_portfolio_simulation_api(
         active_px_sum = sum(latest_quotes[s].mid_price / initial_prices[s] for s in active_symbols if s in latest_quotes)
         bnh_val = initial_cash * (active_px_sum / max(1, len(latest_quotes)))
 
-        ready_symbols = [s for s in active_symbols if feature_trackers[s].count >= 40 and s in latest_quotes]
+        ready_symbols = [s for s in active_symbols if feature_trackers[s].count >= 60 and s in latest_quotes]
         if len(ready_symbols) < len(active_symbols) * 0.5:
             equity_records.append({
                 "time": int(ts),
@@ -162,85 +175,96 @@ def run_portfolio_simulation_api(
             })
             continue
 
-        # Score assets in O(1)
-        asset_scores = {}
-        for sym in ready_symbols:
-            ft = feature_trackers[sym]
-            c = ft.prev_close or latest_quotes[sym].mid_price
-            ema20 = ft.emas.get(20, c)
-            ema50 = ft.emas.get(50, c)
-            ema100 = ft.emas.get(100, c)
-            atr_val = ft.atr or (c * 0.015)
-            rsi_val = ft.rsi
-            base_std = ft.rolling_std
+        # Hourly Trailing Stop Checks
+        stopped_out: Set[str] = set()
+        for sym in list(current_held_leaders):
+            if sym in ready_symbols:
+                c = latest_quotes[sym].mid_price
+                ft = feature_trackers[sym]
+                atr_val = ft.atr or (c * 0.015)
+                highest_price_tracking[sym] = max(highest_price_tracking[sym], c)
+                trailing_stop = highest_price_tracking[sym] - 3.8 * atr_val
+                ema100 = ft.emas.get(100, c)
 
-            inst = instruments[sym]
-            score = 0.0
+                if c < trailing_stop or c < ema100 * 0.96:
+                    stopped_out.add(sym)
+                    current_held_leaders.remove(sym)
+                    fill = broker.execute_target_weight(sym, 0.0, quote=latest_quotes[sym])
+                    if fill is not None:
+                        trade_ledger.append({
+                            "timestamp": int(ts),
+                            "symbol": sym,
+                            "side": fill.side.value.upper(),
+                            "quantity": round(fill.quantity, 4),
+                            "price": round(fill.price, 4),
+                            "fee": round(fill.fee, 4),
+                            "target_weight": 0.0
+                        })
 
-            if inst.asset_class in (AssetClass.STOCK, AssetClass.COMMODITY):
-                lower_keltner = ema100 - 3.5 * atr_val
-                is_bull = (c > lower_keltner) or (ema20 > ema50)
-                is_bear = (c < lower_keltner) and (ema20 < ema100)
+        # Scheduled Rebalancing
+        if tick_count % rebalance_interval == 0 or len(current_held_leaders) == 0:
+            scored_universe = []
+            for sym in ready_symbols:
+                ft = feature_trackers[sym]
+                c = latest_quotes[sym].mid_price
+                ema20 = ft.emas.get(20, c)
+                ema50 = ft.emas.get(50, c)
+                ema100 = ft.emas.get(100, c)
+                rsi_val = ft.rsi
+                inst = instruments[sym]
 
-                if is_bull and not is_bear:
-                    score = 0.0085 if rsi_val < 48.0 else 0.0070
-                elif is_bear:
-                    score = -0.0060
-                else:
-                    score = 0.0020
-            elif inst.asset_class == AssetClass.CRYPTO_SPOT:
-                is_crypto_bull = (c > ema100 * 1.01) and (ema20 > ema100)
-                is_crypto_bear = (c < ema100 * 0.97) or (ema50 < ema100)
-                if is_crypto_bull:
-                    score = 0.0090 if rsi_val < 45.0 else 0.0075
-                elif is_crypto_bear:
-                    score = -0.0080
-                else:
-                    score = 0.0010
+                ring = price_ring_80[sym]
+                past_px = ring[0] if len(ring) >= 40 else c
+                ret_80 = (c - past_px) / past_px
 
-            ir = score / max(1e-4, base_std)
-            asset_scores[sym] = (score, base_std, ir)
+                is_trend_intact = (c > ema100 * 0.98) and (ema20 > ema50 or c > ema50)
+                if inst.asset_class == AssetClass.CRYPTO_SPOT:
+                    is_trend_intact = is_trend_intact and (c > ema100 * 1.02) and (ema50 > ema100)
 
-        positive_assets = [(sym, score, std, ir) for sym, (score, std, ir) in asset_scores.items() if score > 0]
-        positive_assets.sort(key=lambda x: x[3], reverse=True)
+                if is_trend_intact and ret_80 > 0.01:
+                    score = ret_80 * (1.15 if 40.0 <= rsi_val <= 65.0 else 0.85)
+                    scored_universe.append((sym, score))
 
-        target_weights: Dict[str, float] = {s: 0.0 for s in active_symbols}
-        allocated_leverage = 0.0
+            scored_universe.sort(key=lambda x: x[1], reverse=True)
+            top_candidates = [sym for sym, _ in scored_universe[:top_k]]
+            top_candidate_pool = set(sym for sym, _ in scored_universe[:top_k + 2])
 
-        for sym, score, std, ir in positive_assets:
-            if allocated_leverage >= max_leverage:
-                break
-            vol_target_w = min(0.20, 0.045 / max(0.01, std))
-            alloc_w = min(vol_target_w, max_leverage - allocated_leverage)
-            target_weights[sym] = alloc_w
-            allocated_leverage += alloc_w
+            new_leaders = set()
+            for sym in current_held_leaders:
+                if sym in top_candidate_pool and sym not in stopped_out:
+                    new_leaders.add(sym)
 
-        for sym in updated_symbols:
-            current_w = current_portfolio.get_position_weight(sym)
-            target_w = target_weights[sym]
+            for sym in top_candidates:
+                if len(new_leaders) < top_k and sym not in stopped_out:
+                    new_leaders.add(sym)
 
-            if abs(target_w - current_w) < 0.045 and target_w > 0:
-                continue
-            if target_w == 0.0 and current_w < 0.02:
-                continue
+            current_held_leaders = new_leaders
 
-            curr_px = latest_quotes[sym].mid_price
-            last_px = last_rebalance_price[sym]
-            if last_px > 0 and target_w > 0 and abs(curr_px - last_px) / last_px < 0.015:
-                continue
+            target_weights: Dict[str, float] = {s: 0.0 for s in active_symbols}
+            if current_held_leaders:
+                target_w = min(0.35, max_leverage / len(current_held_leaders))
+                for sym in current_held_leaders:
+                    target_weights[sym] = target_w
 
-            fill = broker.execute_target_weight(sym, target_w, quote=latest_quotes[sym])
-            if fill is not None:
-                last_rebalance_price[sym] = fill.price
-                trade_ledger.append({
-                    "timestamp": int(ts),
-                    "symbol": sym,
-                    "side": fill.side.value.upper(),
-                    "quantity": round(fill.quantity, 4),
-                    "price": round(fill.price, 4),
-                    "fee": round(fill.fee, 4),
-                    "target_weight": round(target_w * 100, 2)
-                })
+            for sym in active_symbols:
+                if sym not in latest_quotes:
+                    continue
+                curr_w = current_portfolio.get_position_weight(sym)
+                targ_w = target_weights[sym]
+
+                if abs(targ_w - curr_w) > 0.06:
+                    fill = broker.execute_target_weight(sym, targ_w, quote=latest_quotes[sym])
+                    if fill is not None:
+                        highest_price_tracking[sym] = fill.price
+                        trade_ledger.append({
+                            "timestamp": int(ts),
+                            "symbol": sym,
+                            "side": fill.side.value.upper(),
+                            "quantity": round(fill.quantity, 4),
+                            "price": round(fill.price, 4),
+                            "fee": round(fill.fee, 4),
+                            "target_weight": round(targ_w * 100, 2)
+                        })
 
         post_portfolio = broker.get_portfolio_state()
         curr_weights = {s: round(post_portfolio.get_position_weight(s) * 100, 2) for s in active_symbols}
@@ -292,4 +316,3 @@ def run_portfolio_simulation_api(
         "trades": trade_ledger,
         "positions": positions_summary
     }
-

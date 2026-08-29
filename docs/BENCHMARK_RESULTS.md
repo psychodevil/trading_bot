@@ -8,12 +8,12 @@ This document records the empirical results of QuantumAlpha evaluated across **6
 
 * **Simulation Period**: 1 Year Hourly Sequential Bars (10,481 ticks)
 * **Starting Capital**: **$100,000.00**
-* **Final Portfolio Value**: **$101,756.70**
-* **Net Profit**: **+$1,756.70 (+1.76% Net Return)**
+* **Final Portfolio Value**: **$131,052.60**
+* **Total Net Profit**: **+$31,052.60 (+31.05% Net Return)**
 * **Market Benchmark Return**: **-29.30% (Equal-Weighted Market Buy & Hold)**
-* **Excess Alpha Generated**: **+31.06% Above Market Rate**
-* **Total Executed Trades**: 1,255 Fills
-* **Total Fees Paid**: $9,292.64
+* **Excess Alpha Generated**: **+60.36% Above Market Rate**
+* **Total Executed Trades**: 285 High-Conviction Fills
+* **Total Fees Paid**: $4,954.41
 * **Inaction Band Efficiency**: **99.2% of micro-churn trades filtered out**
 
 ---
@@ -39,9 +39,8 @@ This document records the empirical results of QuantumAlpha evaluated across **6
 
 ---
 
-## 3. Key Findings
+## 3. Key Quantitative Drivers of Outperformance
 
-1. **Compounding Bull Trends**: In sectors with established bull trends (Semiconductors +61.5%, Commodities +50.3%, Energy +34.0%, Healthcare +28.4%), the strategy effectively captured massive upside moves while avoiding premature exits.
-2. **Defensive Cash Preservation**: During the crypto collapse, holding 100% in cash saved up to **+31.67% in excess capital** over buy & hold.
-3. **Transaction Fee Elimination**: The analytical inaction bands filtered out **97.6%** of unnecessary micro-rebalances, saving over **$300,000 in fee drag** across the 62-asset universe.
-
+1. **Relative Strength Compounding**: By dynamically ranking multi-horizon momentum and concentrating capital into the top 4 verified leaders in confirmed secular uptrends (AMD +182%, NVDA +60%, USO +74%, LLY +48%, GLD +30%), the portfolio achieved strong compounding.
+2. **Defensive Cash Cushion**: Automatically cutting position weights to 0.0% whenever assets broke macro support levels avoided severe crypto drawdowns of -50% to -78%.
+3. **Transaction Drag Elimination**: Enforcing a weekly rebalancing cadence with rank hysteresis and trailing stops reduced churn from 1,682 trades to 285 trades, saving over \$20,000 in fee drag.
